@@ -117,3 +117,124 @@ fpid的值为什么在父子进程中不同。其实就相当于链表，进程�
 
 * 临界资源：一次仅仅允许一个进程访问的资源
 * 临界区：每个进程中访问临界资源的那段代码
+
+#### 同步与互斥
+
+* 进程互斥：两个或两个以上的进程，不能同时进入关于同一组共享变量的临界区域，否则可能发生与时间有关的错误。是进程间发生的一种间接性作用。
+* 进程互斥：系统中各进程之间能有效地共享资源和相互合作，从而使程序的执行具有可再现性的过程。是进程间的一种刻意安排的直接制约关系。即为完成同一个任务的各进程之间，因需要协调它们的工作而相互等待、相互交换信息所产生的制约关系。
+* 互斥：某一资源同时只允许一个访问者对其进行访问，具有唯一性和排它性。互斥无法限制访问者对资源的访问顺序，即访问是无序访问。
+* 是指在互斥的基础上（大多数情况），通过其它机制实现访问者对资源的有序访问。在大多数情况下，同步已经实现了互斥，特别是所有对资源的写入的情况必定是互斥的。少数情况是指可以允许多个访问者同时访问资源。
+
+#### 互斥设计准则
+
+* 空闲让进
+* 忙则等待
+* 有限等待
+* 让权等待
+
+### 基于忙等待的互斥方法（软件）
+
+#### Dekker算法
+
+![img](image/Thread/Dekker.png)
+
+存在问题：
+
+内层while循环会导致CPU忙等，浪费CPU时间。
+
+#### Peterson算法
+
+![img](image/Thread/Peterson.png)
+
+#### Bakery算法
+
+```c
+Entry Section (i) { // i  process i
+	while (true) {
+		Choosing[i] = 1;
+		Number[i] = 1 + max(Number[1],...,Number[N]);
+		Choosing [i] = 0;
+		for (j=1; j＜=N; ++j) {
+			while (Choosing[j] != 0) { }
+			// wait until process j receives its number
+			while ((Number[j]!=0) && ((Number[j],j) ＜ (Number[i],i))) { }
+			// wait until processes with smaller numbers, or with the 
+			// same number, but with higher priority, finish their work
+		}
+		// critical section...
+		Number[i] = 0;
+		// non-critical section...
+	}
+}
+```
+
+### 基于忙等待的互斥方法（硬件）
+
+* 中断屏蔽
+* `Spinlocks`自旋锁方法（结合使用 `test-and-set`指令）
+* 使用 `swap`指令
+
+### 基于忙等待的互斥方法总结
+
+[CSDN一篇讲的很好的文章](https://blog.csdn.net/m0_48241022/article/details/142315009)
+
+* 共性问题：
+
+  * 忙等待：浪费CPU时间
+  * 优先级反转：低优先级进程先进入临界区，高优先级进程一直忙等
+
+## 4-3
+
+### 信号量
+
+信号量是一个和队列有关的变量
+
+信号量有两个原语
+
+```c
+P(S): while S<=0 do skip
+	S:=S-1;
+
+V(S): S:=S+1;
+```
+
+`P(S)`用来申请资源，`V(S)`用来释放资源，以下是伪代码
+
+```c
+Type semaphore = record
+	value : integer;
+	L : list of process;
+end
+
+Procedure P(S)
+	var S : semaphore;
+	begin 
+		S.value := S.value -1;
+		if S.value<0 then block(S.L);
+	end
+
+procedure V(S)
+	var S : semaphore;
+	begin
+		S.value := S.value + 1;
+	if S.value<=0 then wakeup(S.L)
+	end
+```
+
+#### 信号量的使用
+
+* 必须置一次且只能置一次初始值
+* 智能由P、V操作来改变
+
+#### 信号量物理意义
+
+* S.value为正时表示资源的个数
+* S.value为负时表示等待进程的个数
+* P操作分配资源
+  * 如果无法分配则阻塞（wait）
+* V操作释放资源
+  * 如果有等待进程则唤醒（signal）
+
+#### 信号量在并发中的应用
+
+![img](image/Thread/Signal.png)
